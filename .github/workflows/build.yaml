@@ -34,8 +34,8 @@ jobs:
       # ✅ Merge bootloader + partitions + firmware
       - name: Merge full firmware
         run: |
-          esptool.py merge_bin -o full_firmware.bin \
-            --flash_mode dio --flash_freq 80m --flash_size 16MB \
+          esptool --chip esp32s3 merge-bin -o full_firmware.bin \
+            --flash-mode dio --flash-freq 80m --flash-size 16MB \
             0x0 .pio/build/esp32-s3-devkitc-1/bootloader.bin \
             0x8000 .pio/build/esp32-s3-devkitc-1/partitions.bin \
             0x10000 .pio/build/esp32-s3-devkitc-1/firmware.bin
