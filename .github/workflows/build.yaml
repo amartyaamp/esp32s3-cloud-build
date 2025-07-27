@@ -1,38 +1,27 @@
-name: ESP32-S3 PlatformIO Build
+name: ESP32-S3 Build
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # ✅ Use latest checkout v4
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # ✅ Set up Python
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      # ✅ Install PlatformIO
-      - name: Install PlatformIO
-        run: |
-          python -m pip install --upgrade pip
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: |
           pip install platformio
-
-      # ✅ Build firmware
-      - name: Build firmware
-        run: pio run
-
-      # ✅ Upload artifact with NEW v4
-      - name: Upload firmware artifact
+      - run: pio run
+      - run: esptool.py merge_bin \
+          -o full_firmware.bin \
+          --flash_mode dio --flash_freq 80m --flash_size 16MB \
+          0x0 .pio/build/*/bootloader.bin \
+          0x8000 .pio/build/*/partition*.bin \
+          0x10000 .pio/build/*/firmware.bin
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: firmware
-          path: .pio/build/esp32-s3-devkitc-1/firmware.bin
+          path: full_firmware.bin
