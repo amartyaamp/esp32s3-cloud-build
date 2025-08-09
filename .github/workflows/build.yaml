@@ -1,4 +1,4 @@
-name: Build ESP32-S3 Hello World
+name: Build ESP32S3 Firmware from src/
 
 on:
   push:
@@ -8,30 +8,38 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install ESP-IDF
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y git wget flex bison gperf python3 python3-pip cmake ninja-build ccache libffi-dev libssl-dev dfu-util
-        git clone -b v5.2 --recursive https://github.com/espressif/esp-idf.git
-        ./esp-idf/install.sh esp32s3
-        . ./esp-idf/export.sh
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-        # Copy hello world example into workspace
-        cp -r esp-idf/examples/get-started/hello_world/* .
+      - name: Install ESP-IDF
+        run: |
+          git clone --depth 1 --branch v5.2.2 https://github.com/espressif/esp-idf.git $HOME/esp-idf
+          cd $HOME/esp-idf
+          ./install.sh esp32s3
 
-        # Build for ESP32-S3
-        idf.py set-target esp32s3
-        idf.py build
+      - name: Export ESP-IDF environment
+        run: |
+          . $HOME/esp-idf/export.sh
 
-    - name: Upload firmware artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: esp32s3_hello_world_firmware
-        path: |
-          build/bootloader/bootloader.bin
-          build/partition_table/partition-table.bin
-          build/hello_world.bin
+      - name: Build firmware from src/
+        run: |
+          . $HOME/esp-idf/export.sh
+          cd src
+          idf.py set-target esp32s3
+          idf.py build
+
+      - name: Upload firmware binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32s3_hello_world_firmware
+          path: |
+            src/build/bootloader/bootloader.bin
+            src/build/partition_table/partition-table.bin
+            src/build/*.bin
