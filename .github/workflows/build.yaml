@@ -19,6 +19,7 @@ jobs:
         git clone -b v5.2 --recursive https://github.com/espressif/esp-idf.git
         ./esp-idf/install.sh esp32s3
         . ./esp-idf/export.sh
+        cp -r esp-idf/examples/get-started/hello_world/* .
         idf.py set-target esp32s3
         idf.py build
 
