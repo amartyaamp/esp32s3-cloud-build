@@ -1,28 +1,29 @@
-name: ESP32-S3 Waveshare Build
+name: Build ESP32-S3 Hello World
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Install PlatformIO
-        run: |
-          python3 -m pip install --upgrade pip
-          pip install platformio
+    - name: Install ESP-IDF
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git wget flex bison gperf python3 python3-pip cmake ninja-build ccache libffi-dev libssl-dev dfu-util
+        git clone -b v5.2 --recursive https://github.com/espressif/esp-idf.git
+        ./esp-idf/install.sh esp32s3
+        . ./esp-idf/export.sh
+        idf.py set-target esp32s3
+        idf.py build
 
-      - name: Build firmware
-        run: pio run --environment esp32-s3-devkitc-1
-
-      - name: Upload firmware artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware
-          path: .pio/build/esp32-s3-devkitc-1/firmware.bin
+    - name: Upload firmware artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: hello_world_bin
+        path: build/hello_world.bin
