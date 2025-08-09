@@ -19,12 +19,19 @@ jobs:
         git clone -b v5.2 --recursive https://github.com/espressif/esp-idf.git
         ./esp-idf/install.sh esp32s3
         . ./esp-idf/export.sh
+
+        # Copy hello world example into workspace
         cp -r esp-idf/examples/get-started/hello_world/* .
+
+        # Build for ESP32-S3
         idf.py set-target esp32s3
         idf.py build
 
-    - name: Upload firmware artifact
+    - name: Upload firmware artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: hello_world_bin
-        path: build/hello_world.bin
+        name: esp32s3_hello_world_firmware
+        path: |
+          build/bootloader/bootloader.bin
+          build/partition_table/partition-table.bin
+          build/hello_world.bin
