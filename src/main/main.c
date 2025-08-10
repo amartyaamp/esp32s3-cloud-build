@@ -1,35 +1,52 @@
-#include "driver/gpio.h"
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "driver/spi_master.h"
+#include "driver/gpio.h"
+#include "esp_log.h"
 #include "esp_err.h"
-#include "esp_lcd_panel_io.h"
+#include "esp_timer.h"
+
+#include "esp_lcd_panel_interface.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
-#include "esp_log.h"
+#include "esp_lcd_panel_st7789.h"
+
 #include "lvgl.h"
 
-#define LCD_HOST         SPI2_HOST
-#define LCD_PIXEL_CLOCK_HZ (40 * 1000 * 1000)
-#define PIN_NUM_MOSI    35
-#define PIN_NUM_CLK     36
-#define PIN_NUM_CS      34
-#define PIN_NUM_DC      33
-#define PIN_NUM_RST     38
-#define PIN_NUM_BK_LIGHT 39
+// ==== CONFIGURE THESE FOR YOUR BOARD ====
+#define LCD_HOST            SPI2_HOST
+#define PIN_NUM_MOSI        11
+#define PIN_NUM_CLK         12
+#define PIN_NUM_CS          10
+#define PIN_NUM_DC          9
+#define PIN_NUM_RST         8
+#define PIN_NUM_BK_LIGHT    14
 
-#define LCD_H_RES       172
-#define LCD_V_RES       320
+#define LCD_H_RES           172
+#define LCD_V_RES           320
+#define LCD_PIXEL_CLOCK_HZ  (40 * 1000 * 1000) // 40MHz SPI
 
 static const char *TAG = "main";
 
-// LVGL flush callback (LVGL v9)
+// LVGL flush callback
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     esp_lcd_panel_handle_t panel_handle = lv_display_get_user_data(disp);
+
+    // Draw area to panel
     esp_lcd_panel_draw_bitmap(panel_handle,
                               area->x1, area->y1,
                               area->x2 + 1, area->y2 + 1,
                               px_map);
-    lv_display_flush_ready(disp);
+
+    lv_disp_flush_ready(disp);
+}
+
+// LVGL tick increment callback
+static void lv_tick_task(void *arg)
+{
+    lv_tick_inc(1);
 }
 
 void app_main(void)
@@ -84,21 +101,32 @@ void app_main(void)
     ESP_LOGI(TAG, "Initialize LVGL");
     lv_init();
 
-    // Allocate LVGL buffer
-    size_t buf_size = LCD_H_RES * 40 * sizeof(lv_color_t);
-    lv_color_t *buf1 = heap_caps_malloc(buf_size, MALLOC_CAP_DMA);
+    // Allocate LVGL buffer (in DMA-capable memory)
+    size_t buf_size = LCD_H_RES * 40; // in pixels
+    lv_color_t *buf1 = heap_caps_malloc(buf_size * sizeof(lv_color_t), MALLOC_CAP_DMA);
     assert(buf1);
 
+    // Create LVGL display
     lv_display_t *disp = lv_display_create(LCD_H_RES, LCD_V_RES);
     lv_display_set_flush_cb(disp, lvgl_flush_cb);
     lv_display_set_user_data(disp, panel_handle);
     lv_display_set_buffers(disp, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
-    // Create "Hello World"
+    // Create "Hello World" label
     lv_obj_t *label = lv_label_create(lv_screen_active());
     lv_label_set_text(label, "Hello World");
     lv_obj_center(label);
 
+    // Start LVGL tick timer (1ms)
+    const esp_timer_create_args_t periodic_timer_args = {
+        .callback = &lv_tick_task,
+        .name = "lv_tick"
+    };
+    esp_timer_handle_t lvgl_tick_timer = NULL;
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &lvgl_tick_timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, 1000));
+
+    // Handle LVGL tasks
     while (1) {
         lv_timer_handler();
         vTaskDelay(pdMS_TO_TICKS(5));
