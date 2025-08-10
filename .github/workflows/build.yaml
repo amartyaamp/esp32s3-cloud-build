@@ -1,41 +1,39 @@
-name: Build ESP32S3 Firmware (Arduino CLI)
+name: Build ESP32S3 Hello World
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Install Arduino CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          sudo mv bin/arduino-cli /usr/local/bin/
+        uses: arduino/setup-arduino-cli@v1
 
-      - name: Configure Arduino CLI
+      - name: Install ESP32 core
         run: |
-          arduino-cli config init
-          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
-      - name: Install libraries
+      - name: Install TFT_eSPI
         run: |
           arduino-cli lib install "TFT_eSPI"
-          arduino-cli lib install "lvgl"
 
-      - name: Compile
+      - name: Compile sketch
         run: |
-          arduino-cli compile --fqbn esp32:esp32:esp32s3 src/main.cpp --output-dir build
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s3:USBMode=default,PartitionScheme=huge_app,FlashSize=8M \
+            display_test
 
-      - name: Upload firmware artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: esp32s3_arduino_firmware
-          path: build/*.bin
+          name: esp32s3_hello_world_firmware
+          path: |
+            display_test/build/esp32.esp32.esp32s3/display_test.ino.bin
