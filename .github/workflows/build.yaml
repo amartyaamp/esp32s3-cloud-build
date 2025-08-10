@@ -35,7 +35,7 @@ jobs:
           arduino-cli compile --fqbn esp32:esp32:esp32s3 src/main.cpp --output-dir build
 
       - name: Upload firmware artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: esp32s3_arduino_firmware
           path: build/*.bin
